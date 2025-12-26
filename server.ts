@@ -1,6 +1,7 @@
 import { serve } from "bun";
 import { networkInterfaces } from "os";
-import { spawn } from "child_process"; // Using node:child_process for Windows command compatibility/easier concat
+import { spawn, execSync } from "child_process";
+import { existsSync, mkdirSync } from "fs";
 
 // --- CONFIGURATION ---
 const PORT = 3000;
@@ -11,7 +12,7 @@ const CMD_SHUTDOWN = "shutdown /s /t 0";
 // --- UTILS ---
 function getLocalIp() {
   const nets = networkInterfaces();
-  const results = Object.create(null); // Or just use an array
+  const results = Object.create(null);
 
   for (const name of Object.keys(nets)) {
     for (const net of nets[name]!) {
@@ -30,13 +31,40 @@ function getLocalIp() {
   return allIps.length > 0 ? allIps[0] : "localhost";
 }
 
+// --- CERTIFICATES GENERATION ---
+const CERT_DIR = "certs";
+const KEY_PATH = `${CERT_DIR}/key.pem`;
+const CERT_PATH = `${CERT_DIR}/cert.pem`;
+
+if (!existsSync(KEY_PATH) || !existsSync(CERT_PATH)) {
+  console.log("⚠️  Certificats SSL manquants. Génération en cours...");
+  try {
+    if (!existsSync(CERT_DIR)) {
+      mkdirSync(CERT_DIR);
+    }
+    // Génération silencieuse de certificats auto-signés valables 1 an
+    execSync(
+      `openssl req -x509 -newkey rsa:2048 -keyout "${KEY_PATH}" -out "${CERT_PATH}" -days 365 -nodes -subj "/C=FR/ST=France/L=Paris/O=PCControl/CN=PC Control Local"`,
+      { stdio: "ignore" }
+    );
+    console.log("✅ Certificats générés avec succès dans ./certs/");
+  } catch (err) {
+    console.error("❌ Erreur lors de la génération des certificats OpenSSL. Assurez-vous qu'OpenSSL est installé.", err);
+    process.exit(1);
+  }
+}
+
 // --- SERVER ---
 console.log(`\n🚀 Serveur de Contrôle PC démarré !`);
-console.log(`📱 Accédez à l'app via : http://${getLocalIp()}:${PORT}`);
+console.log(`📱 Accédez à l'app via : https://${getLocalIp()}:${PORT}`);
 console.log(`🔒 Appuyez sur Ctrl+C pour arrêter le serveur.\n`);
 
 serve({
   port: PORT,
+  tls: {
+    key: Bun.file(KEY_PATH),
+    cert: Bun.file(CERT_PATH),
+  },
   async fetch(req) {
     const url = new URL(req.url);
 
@@ -48,19 +76,10 @@ serve({
 
       try {
         // Étape 1 : GoXLR
-        // console.log(`> Exécution : ${CMD_GOXLR}`);
-        // Note: Sur Windows, il est souvent préférable d'utiliser 'shell: true' ou d'invoquer via cmd /c
-        // Pour Bun natif, on peut utiliser Bun.spawn, mais child_process est parfois plus stable pour les commandes Windows legacy.
-        // On va tenter une approche séquentielle simple avec spawn.
-
-        // Mock execution check for testing environment (if needed), but here we write for Prod.
-        // We wrap in a promise to await execution
         // await runCommand(CMD_GOXLR);
 
         // Étape 2 : Shutdown
         console.log(`> Exécution : ${CMD_SHUTDOWN}`);
-        // Dans un vrai scénario, on décommente la ligne suivante.
-        // Pour la sécurité du développement, je la laisse active mais soyez conscient.
         await runCommand(CMD_SHUTDOWN);
 
         return new Response(
@@ -92,8 +111,6 @@ serve({
     const safePath = filePath.replace(/^(\.\.[\/\\])+/, "");
     const src = "public" + safePath;
 
-    // Additional check to ensure we stay in public/ (though Bun.file handles basic path resolution,
-    // it's good practice to ensure we don't serve outside intended scope if logic changes)
     if (safePath.includes("..")) {
       return new Response("Forbidden", { status: 403 });
     }
@@ -112,22 +129,12 @@ serve({
 // Helper function to run shell commands
 function runCommand(command: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    // Split command for spawn logic if not using shell: true
-    // However, specifically for Windows commands like 'shutdown /s /t 0',
-    // it's often easiest to run inside a shell.
-
-    // Using Bun.spawn is preferred in Bun, but let's stick to node:child_process
-    // for maximum compatibility with Windows shell commands string parsing.
-
     const process = spawn(command, { shell: true, stdio: "inherit" });
 
     process.on("close", (code) => {
       if (code === 0) {
         resolve();
       } else {
-        // On ne reject pas forcément pour le GoXLR si la commande échoue (ex: pas installé),
-        // on veut peut-être quand même éteindre le PC ?
-        // Pour l'instant on log l'erreur mais on resolve pour continuer (soft fail).
         console.warn(
           `⚠️  La commande "${command}" a terminé avec le code ${code}. Continuation...`
         );
@@ -137,8 +144,6 @@ function runCommand(command: string): Promise<void> {
 
     process.on("error", (err) => {
       console.error(`❌ Erreur fatale commande "${command}":`, err);
-      // Soft fail aussi pour garantir que le shutdown se tente quand même ?
-      // Si GoXLR échoue, on veut surement quand même éteindre le PC.
       resolve();
     });
   });

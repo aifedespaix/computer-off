@@ -26,7 +26,7 @@ Une application Web Progressive (PWA) minimaliste et premium pour contrôler vot
     Au démarrage, le terminal affichera quelque chose comme :
     ```
     🚀 Serveur de Contrôle PC démarré !
-    📱 Accédez à l'app via : http://192.168.1.15:3000
+    📱 Accédez à l'app via : https://192.168.1.15:3000
     ```
     Notez cette URL (l'IP `192.168.x.x` est importante).
 
@@ -34,7 +34,10 @@ Une application Web Progressive (PWA) minimaliste et premium pour contrôler vot
 
 1.  Prenez votre téléphone connecté au **même réseau Wi-Fi**.
 2.  Ouvrez votre navigateur (Safari sur iOS, Chrome sur Android).
-3.  Tapez l'URL affichée par le serveur (ex: `http://192.168.1.15:3000`).
+3.  Tapez l'URL affichée par le serveur (ex: `https://192.168.1.15:3000`).
+    > **⚠️ IMPORTANT** : Comme le certificat est "auto-signé", vous aurez un avertissement de sécurité.
+    > *   Cliquez sur **"Paramètres avancés"** (ou "Détails").
+    > *   Puis cliquez sur **"Continuer vers..."** (ou "Accepter le risque").
 4.  L'interface de l'application apparaît.
 
 ### Pour "Installer" l'app (App Native) :
