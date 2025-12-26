@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>PC Control</title>
+
+    <!-- PWA Settings -->
+    <meta name="theme-color" content="#121212">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" href="icon.png">
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <h1>PC Control</h1>
+            <p id="status-text">Maintenir pour éteindre</p>
+        </header>
+
+        <main>
+            <div class="control-wrapper">
+                <!-- SVG Circle Progress -->
+                <svg class="progress-ring" width="200" height="200">
+                    <circle
+                        class="progress-ring__circle"
+                        stroke="white"
+                        stroke-width="8"
+                        fill="transparent"
+                        r="90"
+                        cx="100"
+                        cy="100"
+                    />
+                </svg>
+
+                <!-- The Button -->
+                <button id="shutdown-btn" class="power-btn" aria-label="Éteindre le PC">
+                    <svg viewBox="0 0 24 24" width="48" height="48" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path>
+                        <line x1="12" y1="2" x2="12" y2="12"></line>
+                    </svg>
+                </button>
+            </div>
+        </main>
+
+        <footer>
+            <div id="feedback-message" class="hidden"></div>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        // Registration Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('SW enregistré', reg))
+                    .catch(err => console.log('SW échec', err));
+            });
+        }
+    </script>
+</body>
+</html>
