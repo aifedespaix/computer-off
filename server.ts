@@ -54,6 +54,49 @@ if (!existsSync(KEY_PATH) || !existsSync(CERT_PATH)) {
   }
 }
 
+// --- SCHEDULED SHUTDOWN STATE ---
+// A single pending shutdown can be scheduled at a time. Kept in memory only:
+// this is a small local-network tool, restarting the server clears it.
+let scheduled: { targetTime: number; timer: ReturnType<typeof setTimeout> } | null = null;
+
+function clearSchedule() {
+  if (scheduled) {
+    clearTimeout(scheduled.timer);
+    scheduled = null;
+  }
+}
+
+function scheduleShutdown(targetTime: number) {
+  clearSchedule();
+  const delay = Math.max(targetTime - Date.now(), 0);
+  scheduled = {
+    targetTime,
+    timer: setTimeout(() => {
+      scheduled = null;
+      executeShutdown().catch((err) =>
+        console.error("❌ Erreur lors de l'extinction programmée:", err)
+      );
+    }, delay),
+  };
+}
+
+async function executeShutdown() {
+  console.log(`[${new Date().toLocaleTimeString()}] ⚠️  Extinction en cours...`);
+  // Étape 1 : GoXLR (désactivé par défaut, décommenter si utilisé)
+  // await runCommand(CMD_GOXLR);
+
+  // Étape 2 : Shutdown
+  console.log(`> Exécution : ${CMD_SHUTDOWN}`);
+  await runCommand(CMD_SHUTDOWN);
+}
+
+function jsonResponse(data: unknown, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
 // --- SERVER ---
 console.log(`\n🚀 Serveur de Contrôle PC démarré !`);
 console.log(`📱 Accédez à l'app via : https://${getLocalIp()}:${PORT}`);
@@ -68,52 +111,60 @@ serve({
   async fetch(req) {
     const url = new URL(req.url);
 
-    // 1. API Endpoint: Shutdown
+    // 1. API Endpoint: Shutdown immédiat
     if (url.pathname === "/shutdown" && req.method === "POST") {
-      console.log(
-        `[${new Date().toLocaleTimeString()}] ⚠️  Demande d'arrêt reçue...`
-      );
+      console.log(`[${new Date().toLocaleTimeString()}] ⚠️  Demande d'arrêt immédiat reçue...`);
+      clearSchedule();
 
       try {
-        // Étape 1 : GoXLR
-<<<<<<< HEAD
-        // console.log(`> Exécution : ${CMD_GOXLR}`);
-        // Note: Sur Windows, il est souvent préférable d'utiliser 'shell: true' ou d'invoquer via cmd /c
-        // Pour Bun natif, on peut utiliser Bun.spawn, mais child_process est parfois plus stable pour les commandes Windows legacy.
-        // On va tenter une approche séquentielle simple avec spawn.
-
-        // Mock execution check for testing environment (if needed), but here we write for Prod.
-        // We wrap in a promise to await execution
-=======
->>>>>>> c483d9ae54bc349274a359924c1662e68fb1ef48
-        // await runCommand(CMD_GOXLR);
-
-        // Étape 2 : Shutdown
-        console.log(`> Exécution : ${CMD_SHUTDOWN}`);
-        await runCommand(CMD_SHUTDOWN);
-
-        return new Response(
-          JSON.stringify({
-            status: "success",
-            message: "PC en cours d'extinction",
-          }),
-          {
-            headers: { "Content-Type": "application/json" },
-          }
-        );
+        await executeShutdown();
+        return jsonResponse({ status: "success", message: "PC en cours d'extinction" });
       } catch (error) {
         console.error("❌ Erreur lors de l'exécution des commandes:", error);
-        return new Response(
-          JSON.stringify({ status: "error", message: String(error) }),
-          {
-            status: 500,
-            headers: { "Content-Type": "application/json" },
-          }
-        );
+        return jsonResponse({ status: "error", message: String(error) }, 500);
       }
     }
 
-    // 2. Static File Serving
+    // 2. API Endpoint: Programmer une extinction
+    if (url.pathname === "/schedule" && req.method === "POST") {
+      let body: { targetTime?: number };
+      try {
+        body = await req.json();
+      } catch {
+        return jsonResponse({ status: "error", message: "Corps de requête invalide" }, 400);
+      }
+
+      const targetTime = Number(body.targetTime);
+      if (!Number.isFinite(targetTime) || targetTime <= Date.now()) {
+        return jsonResponse(
+          { status: "error", message: "targetTime doit être un timestamp futur" },
+          400
+        );
+      }
+
+      scheduleShutdown(targetTime);
+      console.log(
+        `[${new Date().toLocaleTimeString()}] ⏰ Extinction programmée à ${new Date(targetTime).toLocaleTimeString()}`
+      );
+      return jsonResponse({ status: "success", targetTime });
+    }
+
+    // 3. API Endpoint: Annuler la programmation
+    if (url.pathname === "/schedule" && req.method === "DELETE") {
+      clearSchedule();
+      console.log(`[${new Date().toLocaleTimeString()}] 🛑 Programmation annulée`);
+      return jsonResponse({ status: "success" });
+    }
+
+    // 4. API Endpoint: Statut de la programmation
+    if (url.pathname === "/schedule" && req.method === "GET") {
+      return jsonResponse({
+        active: scheduled !== null,
+        targetTime: scheduled?.targetTime ?? null,
+      });
+    }
+
+    // 5. Static File Serving
     let filePath = url.pathname;
     if (filePath === "/") filePath = "/index.html";
 
@@ -138,35 +189,17 @@ serve({
 
 // Helper function to run shell commands
 function runCommand(command: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const process = spawn(command, { shell: true, stdio: "inherit" });
+  return new Promise((resolve) => {
+    const proc = spawn(command, { shell: true, stdio: "inherit" });
 
-<<<<<<< HEAD
-    // Using Bun.spawn is preferred in Bun, but let's stick to node:child_process
-    // for maximum compatibility with Windows shell commands string parsing.
-
-    const process = spawn(command, { shell: true, stdio: "inherit" });
-
-=======
->>>>>>> c483d9ae54bc349274a359924c1662e68fb1ef48
-    process.on("close", (code) => {
-      if (code === 0) {
-        resolve();
-      } else {
-<<<<<<< HEAD
-        // On ne reject pas forcément pour le GoXLR si la commande échoue (ex: pas installé),
-        // on veut peut-être quand même éteindre le PC ?
-        // Pour l'instant on log l'erreur mais on resolve pour continuer (soft fail).
-=======
->>>>>>> c483d9ae54bc349274a359924c1662e68fb1ef48
-        console.warn(
-          `⚠️  La commande "${command}" a terminé avec le code ${code}. Continuation...`
-        );
-        resolve();
+    proc.on("close", (code) => {
+      if (code !== 0) {
+        console.warn(`⚠️  La commande "${command}" a terminé avec le code ${code}. Continuation...`);
       }
+      resolve();
     });
 
-    process.on("error", (err) => {
+    proc.on("error", (err) => {
       console.error(`❌ Erreur fatale commande "${command}":`, err);
       resolve();
     });

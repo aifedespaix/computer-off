@@ -62,8 +62,12 @@ const CMD_SHUTDOWN = "shutdown /s /t 0";
 
 ## Fonctionnement
 
+L'app est pensée pour programmer une extinction en un minimum de gestes, typiquement le soir avant de regarder une série ou un film :
+
 1.  Ouvrez l'app sur le mobile.
-2.  **Maintenez** le bouton central appuyé.
-3.  La jauge circulaire se remplit.
-4.  Une fois pleine, le téléphone vibre et envoie la commande au PC.
-5.  Le PC passe le GoXLR en mode "Sleep" et s'éteint.
+2.  Choisissez une durée en un tap parmi les **suggestions rapides** (ex. "30 min", "1 h", "2 h") — les durées que vous utilisez le plus souvent remontent automatiquement en premier, ou une **heure précise** via le sélecteur d'heure (pré-rempli avec votre dernier choix).
+3.  Un compte à rebours s'affiche avec l'heure d'extinction prévue ; vous pouvez l'ajuster (+15 min, +30 min, -15 min) ou l'annuler à tout moment.
+4.  À l'heure programmée, le PC s'éteint automatiquement (GoXLR en mode "Sleep" si activé, puis extinction).
+5.  Besoin d'éteindre tout de suite ? Le lien **"Éteindre maintenant"** en bas de l'écran révèle un bouton à maintenir enfoncé pour confirmer une extinction immédiate.
+
+L'historique des durées et heures utilisées est stocké localement sur l'appareil (localStorage), rien n'est envoyé ailleurs qu'au PC contrôlé.

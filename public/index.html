@@ -28,35 +28,73 @@
     <div class="container">
         <header>
             <h1>PC Control</h1>
-            <p id="status-text">Maintenir pour éteindre</p>
+            <p id="clock" class="clock"></p>
         </header>
 
-        <main>
-            <div class="control-wrapper">
-                <!-- SVG Circle Progress -->
-                <svg class="progress-ring" width="200" height="200">
-                    <circle
-                        class="progress-ring__circle"
-                        stroke="white"
-                        stroke-width="8"
-                        fill="transparent"
-                        r="90"
-                        cx="100"
-                        cy="100"
-                    />
-                </svg>
+        <!-- ===== VUE 1 : Choix de l'extinction (aucune programmation active) ===== -->
+        <main id="view-idle" class="view">
 
-                <!-- The Button -->
-                <button id="shutdown-btn" class="power-btn" aria-label="Éteindre le PC">
-                    <svg viewBox="0 0 24 24" width="48" height="48" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path>
-                        <line x1="12" y1="2" x2="12" y2="12"></line>
-                    </svg>
-                </button>
+            <section class="block">
+                <h2 class="block-title">Éteindre dans…</h2>
+                <div id="duration-chips" class="chip-row"></div>
+            </section>
+
+            <section class="block">
+                <h2 class="block-title">Ou à une heure précise</h2>
+                <div class="time-row">
+                    <input type="time" id="time-input" class="time-input" />
+                    <button id="time-confirm" class="btn-primary">Programmer</button>
+                </div>
+            </section>
+
+            <button id="custom-toggle" class="link-btn">Durée personnalisée</button>
+            <section id="custom-block" class="block hidden">
+                <div class="custom-row">
+                    <input type="number" id="custom-minutes" class="custom-input" min="1" step="1" placeholder="Minutes" />
+                    <button id="custom-confirm" class="btn-primary">Programmer</button>
+                </div>
+            </section>
+
+        </main>
+
+        <!-- ===== VUE 2 : Programmation active ===== -->
+        <main id="view-active" class="view hidden">
+            <div class="countdown-wrapper">
+                <svg class="progress-ring" width="220" height="220">
+                    <circle class="progress-ring__bg" stroke-width="8" fill="transparent" r="100" cx="110" cy="110" />
+                    <circle class="progress-ring__circle" stroke-width="8" fill="transparent" r="100" cx="110" cy="110" />
+                </svg>
+                <div class="countdown-center">
+                    <span id="countdown-time" class="countdown-time">--:--</span>
+                    <span id="countdown-target" class="countdown-target">à --:--</span>
+                </div>
             </div>
+
+            <div class="chip-row adjust-row">
+                <button class="chip" data-adjust="-15">-15 min</button>
+                <button class="chip" data-adjust="15">+15 min</button>
+                <button class="chip" data-adjust="30">+30 min</button>
+            </div>
+
+            <button id="cancel-btn" class="btn-cancel">Annuler la programmation</button>
         </main>
 
         <footer>
+            <button id="now-toggle" class="link-btn danger">Éteindre maintenant</button>
+            <div id="now-confirm-row" class="now-confirm-row hidden">
+                <div class="control-wrapper-small">
+                    <svg class="progress-ring-small" width="72" height="72">
+                        <circle class="progress-ring-small__circle" stroke-width="5" fill="transparent" r="30" cx="36" cy="36" />
+                    </svg>
+                    <button id="shutdown-btn" class="power-btn-small" aria-label="Éteindre le PC maintenant">
+                        <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path>
+                            <line x1="12" y1="2" x2="12" y2="12"></line>
+                        </svg>
+                    </button>
+                </div>
+                <span class="now-hint">Maintenir pour confirmer</span>
+            </div>
             <div id="feedback-message" class="hidden"></div>
         </footer>
     </div>
